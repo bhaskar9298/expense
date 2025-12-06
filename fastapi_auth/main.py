@@ -29,7 +29,11 @@ app = FastAPI(title="Expense Tracker Auth API")
 # CORS Configuration - Update for production
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],  # React dev servers
+    allow_origins=[
+        "http://localhost:5173",
+        "https://*.onrender.com",
+        "https://expense-tracker-frontend-5jzp.onrender.com"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
