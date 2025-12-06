@@ -56,19 +56,28 @@ export async function parseNaturalLanguage(userInput) {
     }
   });
 
-  const prompt = `You are an expense tracker assistant. Parse the user's natural language input and output ONLY valid JSON in this format:
+const prompt = `You are an expense tracker assistant. Parse the user's natural language input and output ONLY valid JSON in this format:
 {
   "tool": "tool_name",
   "args": { ... }
 }
 
-Available tools: add_expense, list_expenses, summarize
+Available tools:
+1. add_expense - parameters: date (YYYY-MM-DD), amount, category, subcategory (optional), note (optional)
+2. list_expenses - parameters: start_date (YYYY-MM-DD), end_date (YYYY-MM-DD)
+3. summarize - parameters: start_date (YYYY-MM-DD), end_date (YYYY-MM-DD), category (optional)
 
-Rules:
-- Extract dates intelligently ("today" = ${new Date().toISOString().split('T')[0]})
+CRITICAL DATE FORMAT RULES:
+- All dates MUST be in YYYY-MM-DD format (e.g., "2025-12-06")
+- NO timestamps, NO time portions, NO "00:00:00"
+- "today" = ${new Date().toISOString().split('T')[0]}
+- "this week" = start: ${new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}, end: ${new Date().toISOString().split('T')[0]}
+- "this month" = start: ${new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]}, end: ${new Date().toISOString().split('T')[0]}
+
+Other rules:
 - Extract amounts (handle "8 rupees", "$10", "5 dollars")
 - Map to appropriate categories (Food, Transport, Shopping, Entertainment, Bills, Other)
-- NO additional text, NO explanation, ONLY JSON
+- NO additional text, ONLY JSON
 
 User input: "${userInput}"`;
 

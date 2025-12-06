@@ -11,8 +11,14 @@ import os
 from dotenv import load_dotenv
 import httpx
 import hashlib
+import json
 from typing import Optional
 from pathlib import Path
+import sys
+
+# Add client directory to Python path
+sys.path.append(str(Path(__file__).parent.parent / 'client'))
+from langgraph_service import process_tool_call
 
 # Load .env from parent directory
 env_path = Path(__file__).parent.parent / '.env'
@@ -43,7 +49,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 security = HTTPBearer()
 
 # MCP Server Configuration
-MCP_SERVER_URL = os.getenv("MCP_SERVER_URL")
+MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "http://localhost:8000")
 
 # Pydantic Models
 class UserSignup(BaseModel):
@@ -219,28 +225,21 @@ async def execute_mcp_tool(
     current_user: TokenData = Depends(get_current_user)
 ):
     """
-    Gateway to MCP server - injects user_id from JWT
+    Gateway using LangGraph - processes tool calls through MCP
     """
-    # Add user_id to arguments
-    args_with_user = {
-        "user_id": current_user.user_id,
-        **request.args
-    }
-    
-    # Forward to FastMCP remote server
-    async with httpx.AsyncClient() as client:
-        try:
-            # Try direct tool endpoint: /tools/{tool_name}
-            response = await client.post(
-                f"{MCP_SERVER_URL}/tools/{request.tool}",
-                json=args_with_user,
-                timeout=30.0
-            )
-            response.raise_for_status()
-            return response.json()
+    try:
+        # Process with LangGraph (maintains compatibility with Gemini.js parsing)
+        result = await process_tool_call(
+            tool_name=request.tool,
+            args=request.args,
+            user_id=current_user.user_id
+        )
         
-        except httpx.HTTPError as e:
-            raise HTTPException(status_code=500, detail=f"MCP call failed: {str(e)}")
+        # Return the result (already in correct format from MCP)
+        return result
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/health")
 async def health_check():
